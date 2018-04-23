@@ -2,70 +2,39 @@
 #![feature(trace_macros)]
 #![feature(log_syntax)]
 
-macro_rules! _add_truncate {
-    //( $lhs:ident $rhs:ident $carry:ident )
-    ( _a _a _a ) => { _a };
-    ( _a _a _b ) => { _b };
-    ( _a _b _a ) => { _b };
-    ( _a _b _b ) => { _a };
-    ( _b _a _a ) => { _b };
-    ( _b _a _b ) => { _a };
-    ( _b _b _a ) => { _a };
-    ( _b _b _b ) => { _b };
-}
-
-macro_rules! _add_carry {
-    //( $lhs:ident $rhs:ident $carry:ident )
-    ( _a _a _a ) => { _a };
-    ( _a _a _b ) => { _a };
-    ( _a _b _a ) => { _a };
-    ( _a _b _b ) => { _b };
-    ( _b _a _a ) => { _a };
-    ( _b _a _b ) => { _b };
-    ( _b _b _a ) => { _b };
-    ( _b _b _b ) => { _b };
-}
-
-macro_rules! __add{
+macro_rules! _add{
     (
         $carry:ident
             ( )
-            ( $( $rhs_rest:ident )+ )
+            ( $( $r:ident )+ )
     ) => {
-        __add! { $carry ( _a ) ( $( $rhs_rest )+ ) }
+        _add! { $carry ( zero ) ( $( $r )+ ) }
     };
     (
         $carry:ident
-            ( $( $lhs_rest:ident )+ )
+            ( $( $l:ident )+ )
             ( )
     ) => {
-        __add! { $carry ( $( $lhs_rest )+ ) ( _a ) }
+        _add! { $carry ( $( $l )+ ) ( zero ) }
     };
     (
-        _b
+        one 
             ( )
             ( )
-    ) => { let _b = 1; };
+    ) => { 1 };
     (
-        _a
+        zero
             ( )
             ( )
-    ) => { };
-    /*(
-        $carry:ident
-        ( $lhs:ident $( $lhs_rest:ident )* )
-        ( $rhs:ident $( $rhs_rest:ident )* )
-    ) => {
-        _add_truncate!{$carry $lhs $rhs} __add!{ __add_carry!{$carry $lhs $rhs} ( $( $lhs_rest )+ ) ( $( $rhs_rest )+ ) }
-};*/
-    ( _a ( _a $( $l:ident )* ) ( _a $( $r:ident )* ) ) => { let _a = { __add!{ _a ( $( $l )* ) ( $( $r )* ) } }; };
-    ( _a ( _a $( $l:ident )* ) ( _b $( $r:ident )* ) ) => { let _b = { __add!{ _a ( $( $l )* ) ( $( $r )* ) } }; };
-    ( _a ( _b $( $l:ident )* ) ( _b $( $r:ident )* ) ) => { let _a = { __add!{ _b ( $( $l )* ) ( $( $r )* ) } }; };
-    ( _a ( _b $( $l:ident )* ) ( _a $( $r:ident )* ) ) => { let _b = { __add!{ _a ( $( $l )* ) ( $( $r )* ) } }; };
-    ( _b ( _a $( $l:ident )* ) ( _b $( $r:ident )* ) ) => { let _a = { __add!{ _b ( $( $l )* ) ( $( $r )* ) } }; };
-    ( _b ( _a $( $l:ident )* ) ( _a $( $r:ident )* ) ) => { let _b = { __add!{ _a ( $( $l )* ) ( $( $r )* ) } }; };
-    ( _b ( _b $( $l:ident )* ) ( _a $( $r:ident )* ) ) => { let _a = { __add!{ _b ( $( $l )* ) ( $( $r )* ) } }; };
-    ( _b ( _b $( $l:ident )* ) ( _b $( $r:ident )* ) ) => { let _b = { __add!{ _b ( $( $l )* ) ( $( $r )* ) } }; };
+    ) => { 0 };
+    ( zero ( zero $( $l:ident )* ) ( zero $( $r:ident )* ) ) => { 0 + ( _add!{ zero ( $( $l )* ) ( $( $r )* ) } * 2 ) };
+    ( zero ( zero $( $l:ident )* ) ( one  $( $r:ident )* ) ) => { 1 + ( _add!{ zero ( $( $l )* ) ( $( $r )* ) } * 2 ) };
+    ( zero ( one  $( $l:ident )* ) ( one  $( $r:ident )* ) ) => { 0 + ( _add!{ one  ( $( $l )* ) ( $( $r )* ) } * 2 ) };
+    ( zero ( one  $( $l:ident )* ) ( zero $( $r:ident )* ) ) => { 1 + ( _add!{ zero ( $( $l )* ) ( $( $r )* ) } * 2 ) };
+    ( one  ( zero $( $l:ident )* ) ( one  $( $r:ident )* ) ) => { 0 + ( _add!{ one  ( $( $l )* ) ( $( $r )* ) } * 2 ) };
+    ( one  ( zero $( $l:ident )* ) ( zero $( $r:ident )* ) ) => { 1 + ( _add!{ zero ( $( $l )* ) ( $( $r )* ) } * 2 ) };
+    ( one  ( one  $( $l:ident )* ) ( zero $( $r:ident )* ) ) => { 0 + ( _add!{ one  ( $( $l )* ) ( $( $r )* ) } * 2 ) };
+    ( one  ( one  $( $l:ident )* ) ( one  $( $r:ident )* ) ) => { 1 + ( _add!{ one  ( $( $l )* ) ( $( $r )* ) } * 2 ) };
 }
 
 macro_rules! add {
@@ -74,34 +43,12 @@ macro_rules! add {
         plus
         ( $( $onum:ident )+ )    
     ) => {
-        __add!{
-            _a
+        _add!{
+            zero
                 ( $( $num  )+ )
                 ( $( $onum )+ )
         }
     };
-}
-
-macro_rules! conv_d2a {
-    ( 0 ) => { _a };
-    ( 1 ) => { _b };
-    ( $first_thing:tt $( $thing:tt )+ ) => {
-        $( conv_d2a!{$thing} )+ conv_d2a!{$first_thing} 
-    }
-}
-
-macro_rules! conv_a2d {
-    ( _a ) => { 0 };
-    ( _b ) => { 1 };
-    ( $first_thing:ident $( $thing:ident )+ ) => {
-        conv_a2d!{ $( $thing )+ } conv_a2d!{$first_thing}
-    }
-}
-
-macro_rules! print_idents {
-    ( $( $arg:ident )+ ) => {
-        log_syntax! { $arg }
-    }
 }
 
 fn main() {
@@ -109,8 +56,9 @@ fn main() {
     trace_macros!(true);
 
     //add! { ( conv_d2a!{ 1 0 1 } ) plus ( conv_d2a!{ 1 0 0 }  ) }
-    add! { ( _b _a _b ) plus ( _a _a _b _b _b _b ) };
+    let res = add!( ( one  zero one  ) plus ( zero zero one  one  one  one  ) );
 
     trace_macros!(false);
+    println!("Result is {:}", res);
     return;
 }
